@@ -8,7 +8,15 @@ android {
     namespace = "id.paciana.app"
     compileSdk = 35
 
-    defaultConfig {
+compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+       defaultConfig {
         applicationId = "id.paciana.app"
         minSdk = 26
         targetSdk = 35
