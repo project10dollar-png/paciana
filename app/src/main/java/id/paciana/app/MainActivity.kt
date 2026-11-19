@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import id.paciana.app.data.UserPreferences
+import id.paciana.app.data.UserPreferencesRepository
+import kotlinx.coroutines.launch
 import androidx.documentfile.provider.DocumentFile
 import java.io.File
 
@@ -46,7 +49,7 @@ private data class Work(val author: String, val title: String, val period: Strin
 
 private val sampleWorks = listOf(
     Work("Pacianus dari Barcelona", "Paraenesis ad Paenitentiam", "Abad IV", "Latin",
-        "Fratres carissimi, paenitentia medicina est animae.\\n\\n[Contoh teks untuk memperlihatkan tata letak pembaca. Teks kritis atau transkripsi sumber yang sesungguhnya akan dimuat setelah sumber dan hak penggunaannya diverifikasi.]"),
+        "Fratres carissimi, paenitentia medicina est animae.\n\n[Contoh teks untuk memperlihatkan tata letak pembaca. Teks kritis atau transkripsi sumber yang sesungguhnya akan dimuat setelah sumber dan hak penggunaannya diverifikasi.]"),
     Work("Pacianus dari Barcelona", "Epistulae", "Abad IV", "Latin",
         "[Contoh teks Epistulae Paciani. Teks sumber sesungguhnya belum terhubung.]"),
     Work("Agustinus dari Hippo", "De Civitate Dei", "Abad V", "Latin",
@@ -84,11 +87,21 @@ private fun PacianaApp() {
     var page by remember { mutableStateOf("welcome") }
     var selected by remember { mutableStateOf(sampleWorks.first()) }
     var query by remember { mutableStateOf("") }
-    var language by remember { mutableStateOf("Bahasa Indonesia") }
     var readerTab by remember { mutableStateOf(0) }
-    var note by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val preferencesRepository = remember { UserPreferencesRepository(context) }
+    val preferences by preferencesRepository.preferences.collectAsState(initial = UserPreferences())
+    val scope = rememberCoroutineScope()
+    val ocrDocumentPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        status = if (uri != null) {
+            "Dokumen dipilih. OCR belum dijalankan pada versi ini."
+        } else {
+            "Pemilihan dokumen dibatalkan."
+        }
+    }
 
     PacianaTheme {
         Surface(Modifier.fillMaxSize(), color = Parchment) {
@@ -115,7 +128,7 @@ private fun PacianaApp() {
                                 val fileName = selected.title.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".txt"
                                 val file = File(context.filesDir, fileName)
                                 file.writeText(
-                                    "${selected.title}\\n${selected.author}\\n${selected.period}\\n\\n${selected.sample}\\n",
+                                    "${selected.title}\n${selected.author}\n${selected.period}\n\n${selected.sample}\n",
                                     Charsets.UTF_8
                                 )
                                 status = "Tersimpan sebagai $fileName"
@@ -126,15 +139,15 @@ private fun PacianaApp() {
                         "downloads" -> DownloadsPage(context)
                         "ocr" -> FeaturePage(
                             title = "OCR Dokumen",
-                            description = "Pilih PDF atau gambar halaman untuk menyiapkan proses pengenalan teks.",
+                            description = "Pilih PDF atau gambar halaman. Pemilihan berkas sudah tersedia; mesin OCR akan diintegrasikan pada tahap berikutnya.",
                             button = "Pilih dokumen",
-                            onClick = { status = "Pemilih dokumen dibuka." },
+                            onClick = { ocrDocumentPicker.launch(arrayOf("application/pdf", "image/*")) },
                             status = status,
                             onChooseFile = { page = "ocr" }
                         )
                         "translate" -> TranslatePage()
-                        "notes" -> NotesPage(note, { note = it })
-                        "settings" -> SettingsPage(language, { language = it })
+                        "notes" -> NotesPage(preferences.researchNote, { value -> scope.launch { preferencesRepository.setResearchNote(value) } })
+                        "settings" -> SettingsPage(preferences.language, { value -> scope.launch { preferencesRepository.setLanguage(value) } })
                         else -> AboutPage()
                     }
                 }
