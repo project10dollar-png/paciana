@@ -10,21 +10,25 @@ Aplikasi Android native berbasis Kotlin dan Jetpack Compose. Versi prototipe: 0.
 
 ## Fitur yang tersedia pada fondasi saat ini
 - Welcome page, beranda, dan navigasi dasar.
-- Katalog demonstrasi (belum berisi katalog DCO).
-- Pembaca teks demonstrasi.
-- Ekspor teks demonstrasi ke TXT UTF-8 dan pembacaan offline.
+- Katalog awal terkurasi: satu entri karya Pacianus dengan tautan langsung ke PDF DCO yang telah diperiksa.
+- Halaman detail sumber dan pembukaan PDF eksternal; teks belum disalin ke aplikasi.
+- Pembacaan TXT offline untuk berkas yang disimpan; ekspor teks sumber belum tersedia karena teks belum diintegrasikan.
 - Pemilih berkas PDF/gambar untuk alur OCR (pemrosesan OCR belum aktif).
 - Preferensi bahasa antarmuka tersimpan secara lokal menggunakan Preferences DataStore.
 - Catatan penelitian tersimpan secara lokal dan bertahan setelah aplikasi ditutup.
 
 ## Belum diimplementasikan
-- Katalog daring terkurasi dan tautan ke halaman dokumen Documenta Catholica Omnia.
+- Perluasan katalog DCO (saat ini baru satu entri Pacianus yang diverifikasi; belum ada pencarian katalog daring).
 - OCR aktual untuk Latin dan Yunani poltonik.
 - Penerjemahan AI melalui backend yang aman.
 - Database katalog terstruktur dengan Room.
 - Akun, database cloud, dan sinkronisasi multi-perangkat.
 - Pengelolaan edisi, metadata bibliografis, ekspor sitasi, dan anotasi dokumen.
 - Ikon launcher final dan pengujian otomatis menyeluruh.
+
+
+### Sumber Pacianus yang sudah dimasukkan
+Entri pertama menunjuk ke PDF *Sancti Paciani Barcinonensis* pada Documenta Catholica Omnia. Prolegomena berkas tersebut menyebut tiga surat kepada Sympronianus, *Paraenesis* / *libellus exhortatorius ad paenitentiam*, dan *Sermo de Baptismo*. PACIANA membuka PDF di aplikasi eksternal dan tidak menyimpan salinan teks.
 
 ## Batasan integrasi Documenta Catholica Omnia
 PACIANA harus menautkan ke halaman HTML per dokumen (bukan menanam mirror atau mengunduh koleksi secara massal). Setiap entri perlu mencatat sumber, editor/kompiler, edisi, dan status hak penggunaan. Ikuti ketentuan DCO dan hukum hak cipta yang berlaku.

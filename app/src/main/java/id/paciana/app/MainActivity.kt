@@ -1,6 +1,8 @@
 package id.paciana.app
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -45,17 +47,26 @@ private val MutedBronze = Color(0xFF8C7655)
 private val AgedStone = Color(0xFFB9AA91)
 private val Espresso = Color(0xFF302820)
 
-private data class Work(val author: String, val title: String, val period: String, val language: String, val sample: String)
+private data class Work(
+    val author: String,
+    val title: String,
+    val period: String,
+    val language: String,
+    val sourceUrl: String,
+    val sourceLabel: String,
+    val sourceDescription: String
+)
 
-private val sampleWorks = listOf(
-    Work("Pacianus dari Barcelona", "Paraenesis ad Paenitentiam", "Abad IV", "Latin",
-        "Fratres carissimi, paenitentia medicina est animae.\n\n[Contoh teks untuk memperlihatkan tata letak pembaca. Teks kritis atau transkripsi sumber yang sesungguhnya akan dimuat setelah sumber dan hak penggunaannya diverifikasi.]"),
-    Work("Pacianus dari Barcelona", "Epistulae", "Abad IV", "Latin",
-        "[Contoh teks Epistulae Paciani. Teks sumber sesungguhnya belum terhubung.]"),
-    Work("Agustinus dari Hippo", "De Civitate Dei", "Abad V", "Latin",
-        "[Contoh teks De Civitate Dei. Teks sumber sesungguhnya belum terhubung.]"),
-    Work("Basilius Agung", "Regulae fusius tractatae", "Abad IV", "Yunani",
-        "[Contoh teks Yunani. Teks sumber sesungguhnya belum terhubung.]")
+private val catalogWorks = listOf(
+    Work(
+        author = "Pacianus Barcinonensis",
+        title = "Opera: Epistolae tres ad Sympronianum Novatianum; Paraenesis ad Paenitentiam; Sermo de Baptismo",
+        period = "Abad IV",
+        language = "Latin",
+        sourceUrl = "https://www.documentacatholicaomnia.eu/02m/0397-0397%2C_Pacianus%2C_Epistolae_Tres_Ad_Sympronianum_Novantianum%2C_MLT.pdf",
+        sourceLabel = "Documenta Catholica Omnia · PDF",
+        sourceDescription = "Satu berkas PDF yang memuat tiga surat kepada Sympronianus, Paraenesis (libellus exhortatorius ad paenitentiam), dan Sermo de Baptismo. Deskripsi isi diverifikasi dari prolegomena edisi pada berkas sumber."
+    )
 )
 
 class MainActivity : ComponentActivity() {
@@ -85,7 +96,7 @@ private fun PacianaTheme(content: @Composable () -> Unit) {
 @Composable
 private fun PacianaApp() {
     var page by remember { mutableStateOf("welcome") }
-    var selected by remember { mutableStateOf(sampleWorks.first()) }
+    var selected by remember { mutableStateOf(catalogWorks.first()) }
     var query by remember { mutableStateOf("") }
     var readerTab by remember { mutableStateOf(0) }
     var status by remember { mutableStateOf("") }
@@ -124,14 +135,12 @@ private fun PacianaApp() {
                         )
                         "reader" -> ReaderPage(
                             work = selected, tab = readerTab, onTab = { readerTab = it },
-                            onDownload = {
-                                val fileName = selected.title.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".txt"
-                                val file = File(context.filesDir, fileName)
-                                file.writeText(
-                                    "${selected.title}\n${selected.author}\n${selected.period}\n\n${selected.sample}\n",
-                                    Charsets.UTF_8
-                                )
-                                status = "Tersimpan sebagai $fileName"
+                            onOpenSource = {
+                                try {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(selected.sourceUrl)))
+                                } catch (_: Exception) {
+                                    status = "Tidak dapat membuka sumber. Periksa koneksi dan aplikasi pembuka PDF."
+                                }
                             },
                             onTranslate = { page = "translate" },
                             status = status
@@ -259,20 +268,20 @@ private fun QuickRow(title: String, subtitle: String, icon: androidx.compose.ui.
 @Composable
 private fun LibraryPage(query: String, onQuery: (String) -> Unit, onOpen: (Work) -> Unit) {
     var localQuery by remember { mutableStateOf(query) }
-    val filtered = sampleWorks.filter { (it.author + it.title).contains(localQuery, ignoreCase = true) }
+    val filtered = catalogWorks.filter { (it.author + it.title + it.language).contains(localQuery, ignoreCase = true) }
     Column(Modifier.fillMaxSize().padding(18.dp)) {
         Text("Perpustakaan", fontSize = 25.sp, color = DarkBrown, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(localQuery, { localQuery = it; onQuery(it) }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Cari pengarang atau judul…") }, singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null) })
         Spacer(Modifier.height(12.dp))
-        Text("CONTOH KATALOG", color = StoneGrey, fontSize = 10.sp, letterSpacing = 1.2.sp)
+        Text("KATALOG TERVERIFIKASI · ${filtered.size} SUMBER", color = StoneGrey, fontSize = 10.sp, letterSpacing = 1.2.sp)
         LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp)) {
             items(filtered) { work ->
                 Card(Modifier.fillMaxWidth().clickable { onOpen(work) }, colors = CardDefaults.cardColors(containerColor = IvoryMist)) {
                     Column(Modifier.padding(15.dp)) {
                         Text("${work.author} · ${work.period}", color = Walnut, fontSize = 12.sp)
                         Text(work.title, color = DarkBrown, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, fontFamily = FontFamily.Serif)
-                        Text(work.language, color = StoneGrey, fontSize = 11.sp)
+                        Text(work.language + " · " + work.sourceLabel, color = StoneGrey, fontSize = 11.sp)
                     }
                 }
             }
@@ -281,7 +290,7 @@ private fun LibraryPage(query: String, onQuery: (String) -> Unit, onOpen: (Work)
 }
 
 @Composable
-private fun ReaderPage(work: Work, tab: Int, onTab: (Int) -> Unit, onDownload: () -> Unit, onTranslate: () -> Unit, status: String) {
+private fun ReaderPage(work: Work, tab: Int, onTab: (Int) -> Unit, onOpenSource: () -> Unit, onTranslate: () -> Unit, status: String) {
     Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("PEMBACA TEKS", color = StoneGrey, fontSize = 10.sp, letterSpacing = 1.2.sp)
         Text(work.title, color = DarkBrown, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
@@ -294,11 +303,11 @@ private fun ReaderPage(work: Work, tab: Int, onTab: (Int) -> Unit, onDownload: (
             Column(Modifier.fillMaxSize().padding(16.dp)) {
                 Text(if (tab == 0) "TEXTUS ORIGINALIS" else "TERJEMAHAN INDONESIA", color = MutedBronze, fontSize = 10.sp, letterSpacing = 1.sp)
                 Spacer(Modifier.height(12.dp))
-                Text(if (tab == 0) work.sample else "Terjemahan belum tersedia. Hubungkan penyedia AI penerjemah online untuk menghasilkan terjemahan yang dapat diverifikasi.", color = DarkBrown, fontSize = 16.sp, lineHeight = 25.sp)
+                Text(if (tab == 0) work.sourceDescription + "\n\nTeks lengkap dibuka langsung dari sumber eksternal. PACIANA belum menyalin atau menyimpan isi PDF ini." else "Terjemahan belum tersedia. Modul penerjemahan AI belum terhubung.", color = DarkBrown, fontSize = 16.sp, lineHeight = 25.sp)
             }
         }
-        Button(onClick = onDownload, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MutedBronze)) {
-            Icon(Icons.Default.Download, null); Spacer(Modifier.width(8.dp)); Text("Simpan teks sebagai TXT")
+        Button(onClick = onOpenSource, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MutedBronze)) {
+            Icon(Icons.Default.OpenInNew, null); Spacer(Modifier.width(8.dp)); Text("Buka sumber digital")
         }
         OutlinedButton(onClick = onTranslate, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Translate, null); Spacer(Modifier.width(8.dp)); Text("Penerjemah AI") }
         if (status.isNotBlank()) Text(status, color = MutedBronze, fontSize = 12.sp)
@@ -375,7 +384,7 @@ private fun NotesPage(note: String, onNote: (String) -> Unit) {
         Text("Ruang Penelitian", fontSize = 25.sp, color = DarkBrown, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif)
         Text("Catatan pribadi untuk pembacaan dan penelitian.", color = Walnut)
         OutlinedTextField(note, onNote, modifier = Modifier.fillMaxWidth().weight(1f), label = { Text("Catatan") }, placeholder = { Text("Tuliskan kutipan, gagasan, atau pertanyaan…") })
-        Text("Catatan ini sementara tersimpan selama aplikasi terbuka. Penyimpanan permanen akan ditambahkan pada tahap berikutnya.", color = StoneGrey, fontSize = 12.sp)
+        Text("Catatan disimpan secara lokal pada perangkat menggunakan DataStore. Belum ada sinkronisasi cloud.", color = StoneGrey, fontSize = 12.sp)
     }
 }
 
@@ -390,7 +399,7 @@ private fun SettingsPage(language: String, onLanguage: (String) -> Unit) {
                 Text(it, color = DarkBrown)
             }
         }
-        Text("Bahasa teks sumber dan bahasa terjemahan diatur terpisah dari bahasa antarmuka.", color = StoneGrey, fontSize = 12.sp)
+        Text("Pilihan bahasa tersimpan pada perangkat. Pelokalan seluruh teks antarmuka akan diselesaikan pada tahap berikutnya.", color = StoneGrey, fontSize = 12.sp)
     }
 }
 
